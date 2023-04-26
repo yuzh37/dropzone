@@ -1,0 +1,148 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="./dropzone.css" type="text/css" />
+        <script src="./jquery-3.3.1.min.js"></script>
+        <script src="./dropzone.min.js"></script>
+    </head>
+    <body>
+        <form action="/Design/SaveUploadedFile" enctype="multipart/form-data" class="dropzone" id="file_upload" style="position: fixed;top: 0;bottom: 0;left: 0;right: 0;z-index: 99999;display: none;background-color: rgba(64,159,255,0.8);color: #ffffff;">
+            <div class="dropzone text-center" style="height: 100%;pointer-events: none;">
+                <h3 class="dropzone__title" style="margin-top: 40vh;margin-bottom: 16px;">Drop it like it&#x2019;s hot</h3>
+                <p class="dropzone__text" style="font-size: 16px;">Add your files by dropping them anywhere in this window</p>
+            </div>
+        </form>
+    </body>
+    <script>
+        Dropzone.autoDiscover = false;
+        var myDropzone = new Dropzone("#file_upload", {
+            paramName: "files",
+            uploadMultiple: false,
+            parallelUploads: 100,
+            maxFiles: 100,
+            maxFilesize: 100,//max file size in MB,
+            addRemoveLinks: true,
+            dictResponseError: 'Server not Configured',
+            acceptedFiles: "image/*",
+            //clickable: "#previews",
+            init: function () {
+                var self = this;
+                self.on("addedfile", function (file) {
+                    console.log("----------------------------------------------------------------");
+                });
+                self.on("sending", function (file) {
+                    $("div.loading").removeClass("hidden");
+                });
+
+                self.on("totaluploadprogress", function (progress) {
+                    console.log("progress ", progress);
+                    $('.roller').width(progress + '%');
+                });
+
+                self.on("queuecomplete", function (progress) {
+                    $('.meter').delay(999).slideUp(999);
+                });
+
+                self.on("removedfile", function (file) {
+
+                });
+                //self.on("successmultiple", function (files, response) {
+                self.on("success", function (files, response) {
+                    // Gets triggered when the files have successfully been sent.
+                    // Redirect user or notify of success.
+                    try {
+                        var json_data = $.parseJSON(response);
+                        if (json_data == null) return;
+                        //for (var i = 0; i < json_data.length; i++) {
+                        var inject_str = jQuery("<div class='image-item' data-id='" + json_data[0] + "'>" +
+                                    "<div class='image-item-thumb upload-image'>" +
+                                        "<img src='Design/Upload?_n=" + json_data[0] + "' />" +
+                                        //'<span class="image-cover"></span>' +
+                                        "<div class='trash-container'>" +
+                                        "<span class='trash-icon glyphicon glyphicon-trash' data-name='" + json_data[0] + "'></span></div></div>" +
+                                    "</div>" +
+                                "</div>");
+                            $('#upload-image-area .ele').isotope('insert', inject_str);
+                        //}
+                        $("img[src='Design/Upload?_n=" + json_data[0] + "']").parent().imagesLoaded().progress(function () {
+                        //$('#upload-image-area .ele').imagesLoaded().progress(function () {
+                            $('#upload-image-area .ele').isotope('layout');
+                            $('#upload-image-area .ele .upload-image').draggable({
+                                scroll: false,
+                                appendTo: "#upload-image-area",
+                                containment: "window",
+                                cancel: "a.ui-icon",
+                                revert: "invalid",
+                                helper: "clone",
+                                cursor: "move",
+                                zIndex: 999,
+                                classes: {
+                                    "ui-draggable": "ui-draggable-helper"
+                                },
+                                start: function (e, ui) {
+                                    $(ui.helper).addClass("ui-draggable-helper");
+                                }
+                            });
+                            convertImgToBase64('/Design/Upload?_n=' + json_data[0], function (base64Img) {
+                                fabric.Image.fromURL(base64Img, function (oImg) {
+                                    var minDim = Math.min(canvasVar.canvas_front.width, canvasVar.canvas_front.height);
+                                    var imgScale = minDim / Math.max(oImg.width, oImg.height) / 2;
+
+                                    oImg.set({
+                                        figureID: _.uniqueId(),
+                                        crossOrigin: 'anonymous',
+                                        model: 'image',
+                                        scaleX: imgScale,
+                                        scaleY: imgScale,
+                                        selectable: !canvasVar.colorPickerMode,
+                                    });
+
+                                    for (var i = 0; i < filters.length; i++) {
+                                        oImg.filters[i];
+                                    }
+                                    $("a[data-target='#menu-upload']").click();
+                                    addFigureObject(oImg);
+                                    $("div.loading").removeClass("hidden").addClass("hidden");
+                                });
+                            })
+                        });
+                    } catch (e) {
+                    }
+                });
+                self.on("dragstart", function () {
+                });
+            },
+            complete: function (file) {
+                var reader = new FileReader();
+                reader.readAsDataURL(file);
+                if (file.type.indexOf("image/") != 0) return false;
+
+                reader.onload = function () {
+
+                }
+            }
+        });
+
+        var dragState = false;
+        document.body.addEventListener('dragover', function (e) {
+            if (dragState) return;
+            if (!e.dataTransfer.types.includes('Files')) return;
+            // if (/Safari/.test(navigator.userAgent) && /Apple Computer/.test(navigator.vendor))
+            if(/chrome/.test(navigator.userAgent)){
+                if (e.dataTransfer.items.length < 1) return;
+                var obj = e.dataTransfer.items[0];
+                if (obj.kind != "file") return;
+                if (!obj.type.startsWith("image/")) return;
+            }
+            dragState = true;
+            $("#file_upload").fadeIn();
+        });
+        document.getElementById("file_upload").addEventListener('dragleave', function (e) {
+            $("#file_upload").fadeOut();
+            dragState = false;
+        });
+        document.getElementById("file_upload").addEventListener('drop', function (e) {
+            $("#file_upload").fadeOut();
+            dragState = false;
+        });
+    </script>
+</html>
